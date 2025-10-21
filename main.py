@@ -1,26 +1,27 @@
 import feedparser
-from telegram import Bot
-import asyncio
+import requests
+import time
 import os
 
+# --- CONFIG ---
 RSS_URL = os.environ.get('RSS_URL')
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-CHAT_ID = os.environ.get('CHAT_ID')  # private or public
-CHECK_INTERVAL = 600
+CHAT_ID = os.environ.get('CHAT_ID')  # your private or public channel
+CHECK_INTERVAL = 600  # 10 minutes
 posted_guids = set()
 
-bot = Bot(token=BOT_TOKEN)
+print("Bot started. Monitoring RSS feed...")
 
-async def main():
-    print("Bot started. Monitoring RSS feed...")
-    while True:
-        feed = feedparser.parse(RSS_URL)
-        for entry in feed.entries:
-            if entry.guid not in posted_guids:
-                message = f"{entry.title}\n{entry.link}"
-                await bot.send_message(chat_id=CHAT_ID, text=message)
-                posted_guids.add(entry.guid)
-                print(f"Posted: {entry.title}")
-        await asyncio.sleep(CHECK_INTERVAL)
-
-asyncio.run(main())
+while True:
+    feed = feedparser.parse(RSS_URL)
+    for entry in feed.entries:
+        if entry.guid not in posted_guids:
+            message = f"{entry.title}\n{entry.link}"
+            # Send to Telegram
+            requests.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                params={"chat_id": CHAT_ID, "text": message}
+            )
+            posted_guids.add(entry.guid)
+            print(f"Posted: {entry.title}")
+    time.sleep(CHECK_INTERVAL)
